@@ -1,0 +1,588 @@
+import components.queue.Queue1L;
+import components.xmltree.XMLTree;
+import components.xmltree.XMLTree1;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import javax.swing.JFileChooser;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+
+
+
+
+
+/*
+UN TEXT CONVERTER V2.2
+A program that takes an input folder of xml and pdf files and converts them into plain text files.
+*/
+
+
+// @author JackRathbun
+public final class UNConverter
+{
+  private static final String[] MEMBERS = { 
+      "Afghanistan", "Albania", 
+      "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", 
+      "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", 
+      "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", 
+      "Benin", "Bhutan", "Bolivia", "Plurinational State of Bolivia", 
+      "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", 
+      "Brunei Darussalam", "Bulgaria", "Burkina Faso", "Burma", "Burundi", 
+      "Cambodia", "Cameroon", "Canada", "Cape Verde", "Cabo Verde", 
+      "Central African Republic", "Chad", "Chile", "China", "Colombia", 
+      "Comoros", "Congo", "Costa Rica", "Cote d���Ivoire", "Croatia", 
+      "Cuba", "Cyprus", "Czech Republic", "Czechoslovakia", 
+      "Democratic People���s Republic of Korea", 
+      "Democratic Republic of the Congo", "Denmark", "Djibouti", 
+      "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", 
+      "Equatorial Guinea", "Eritrea", "Estonia", 
+      "The Kingdom of Eswatini", "Ethiopia", "European Council", 
+      "European Union", "Federated States of Micronesia", "Fiji", 
+      "Finland", "France", "French Republic", "Gabon", "Gambia", 
+      "Georgia", "Germany", "Ghana", "Guinea-Bissau", "Greece", "Grenada", 
+      "Guatemala", "Guinea", "Guyana", "Haiti", "Holy See", "Honduras", 
+      "Hungary", "Iceland", "India", "Indonesia", "Iran", 
+      "Islamic Republic of Iran", "Iraq", "Ireland", "Israel", "Italy", 
+      "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", 
+      "Republic of Korea", "Korea", "Kuwait", "Kyrgyz Republic", 
+      "Kyrgyzstan", "Lao People's Democratic Republic", "Latvia", 
+      "League of Arab States", "Lebanon", "Lesotho", "Liberia", "Libya", 
+      "Libyan Arab Jamahiriya", "Liechtenstein", "Lithuania", 
+      "Luxembourg", "Macedonia", 
+      "The former Yugoslav Republic of Macedonia", "Madagascar", "Malawi", 
+      "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", 
+      "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", 
+      "Republic of Moldova", "Monaco", "Mongolia", "Montenegro", 
+      "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", 
+      "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", 
+      "Norway", "Oman", "Pakistan", "Palau", "Palestine", 
+      "Palestine Liberation Organization", "Panama", "Papua New Guinea", 
+      "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", 
+      "Republic of Congo", "Romania", "Russia", "Russian Federation", 
+      "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", 
+      "Saint Vincent and Grenadines", "Saint Vincent and the Grenadines", 
+      "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", 
+      "Senegal", "Serbia", "Serbia and Montenegro", "Seychelles", 
+      "Sierra Leone", "Singapore", "Slovakia", "Slovenia", 
+      "Solomon Islands", "Somalia", "South Africa", "South Sudan", 
+      "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", 
+      "Switzerland", "Syria", "Syrian Arab Republic", "Tajikistan", 
+      "Tanzania", "United Republic of Tanzania", "Thailand", 
+      "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", 
+      "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", 
+      "United Arab Emirates", "United Kingdom", 
+      "United Kingdom of Great Britain and Northern Ireland", 
+      "United States", "United States of America", "Uruguay", "USA", 
+      "Soviet Union", "Uzbekistan", "Vanuatu", "Venezuela", 
+      "Bolivarian Republic of Venezuela", "Viet Nam", "Vietnam", 
+      "Western Sahara", "Yemen", "Yugoslavia", "Zaire", "Zambia", 
+      "Zimbabwe" };
+
+
+
+
+
+
+
+  // moves through files in folder, generating text files for each state at each session
+  public static void listFilesForFolder(File folder, File outputFolder) throws IOException {
+    byte b;
+    int i;
+    File[] arrayOfFile;
+    for (i = arrayOfFile = folder.listFiles().length, b = 0; b < i; ) { File fileEntry = arrayOfFile[b];
+      if (fileEntry.isDirectory()) {
+        listFilesForFolder(fileEntry, outputFolder);
+      } else {
+        String name = fileEntry.getAbsolutePath();
+        if (name.substring(name.length() - 4).equals(".xml")) {
+          XMLTree1 xMLTree1 = new XMLTree1(name);
+          printToTextXML(xMLTree1, outputFolder);
+        } else if (name.substring(name.length() - 4).equals(".pdf")) {
+          String header = name.substring(
+              name.lastIndexOf(File.separator) + 1, 
+              name.length() - 4);
+          PDDocument document = PDDocument.load(fileEntry);
+          PDFTextStripper strip = new PDFTextStripper();
+          strip.setLineSeparator(" ");
+          String text = strip.getText(document);
+          printToTextPDF(text, outputFolder, header);
+          document.close();
+        } 
+      } 
+      b++; }
+  
+  }
+
+
+
+
+
+
+
+
+
+
+  // processes xml file to text file
+  public static void printToTextXML(XMLTree xml, File outputFolder) throws IOException {
+    String path = outputFolder.getAbsolutePath();
+    String session = findSessionXML(xml);
+    String meeting = findMeetingXML(xml);
+    String date = findDateXML(xml);
+    XMLTree body = findBodyXML(xml);
+    String pathEnd = "_" + meeting + "_" + session + "_" + date + ".txt";
+    String president = findPresidentXML(body);
+    
+    BufferedOutputStream out = new BufferedOutputStream(
+        new FileOutputStream(
+          String.valueOf(path) + File.separator + president + pathEnd, true), 
+        165537);
+    for (int i = 0; i < body.numberOfChildren(); i++) {
+      if (body.child(i).child(0).child(0).label().length() > 10 && 
+        body.child(i).child(0).child(0).label().substring(0, 10)
+        .equals("Address by")) {
+        String country = findCountryAddress(
+            body.child(i).child(0).child(0).label());
+        out.flush();
+        out = new BufferedOutputStream(new FileOutputStream(
+              String.valueOf(path) + File.separator + country + pathEnd, true), 
+            165537);
+      } else if (((body.child(i).child(0).child(0).label().length() > 15 && 
+        body.child(i).child(0).child(0).label().substring(0, 15)
+        .equals("The President (")) || (
+        body.child(i).child(0).child(0).label().length() > 14 && 
+        body.child(i).child(0).child(0).label()
+        .substring(0, 14).equals("The President:"))) && 
+        body.child(i).numberOfChildren() > 1) {
+        out.flush();
+        out = new BufferedOutputStream(new FileOutputStream(
+              String.valueOf(path) + File.separator + president + pathEnd, true), 
+            165537);
+      } else if (((body.child(i).child(0).child(0).label().length() > 21 && 
+        body.child(i).child(0).child(0).label().substring(0, 21)
+        .equals("The Acting President:")) || (
+        body.child(i).child(0).child(0).label().length() > 22 && 
+        body.child(i).child(0).child(0).label()
+        .substring(0, 22)
+        .equals("The Acting President ("))) && 
+        body.child(i).numberOfChildren() > 1) {
+        out.flush();
+        out = new BufferedOutputStream(new FileOutputStream(
+              String.valueOf(path) + File.separator + "Acting President" + pathEnd, 
+              true), 165537);
+      } else if (((body.child(i).child(0).child(0).label().length() > 22 && 
+        body.child(i).child(0).child(0).label().substring(0, 22)
+        .equals("The Secretary-General:")) || (
+        body.child(i).child(0).child(0).label().length() > 23 && 
+        body.child(i).child(0).child(0).label()
+        .substring(0, 23)
+        .equals("The Secretary-General ("))) && 
+        body.child(i).numberOfChildren() > 1) {
+        out.flush();
+        out = new BufferedOutputStream(
+            new FileOutputStream(String.valueOf(path) + File.separator + 
+              "Secretary-General" + pathEnd, true), 
+            165537);
+      } else {
+        String country = findCountryParenthesis(
+            body.child(i).child(0).child(0).label());
+        if (!country.equals("")) {
+          out.flush();
+          out = new BufferedOutputStream(new FileOutputStream(
+                String.valueOf(path) + File.separator + country + pathEnd, true), 
+              165537);
+        } 
+      } 
+      out.write(System.getProperty("line.separator").getBytes());
+      for (int j = 0; j < body.child(i).numberOfChildren(); j++) {
+        out.write(body.child(i).child(j).child(0).label().getBytes());
+        out.write(" ".getBytes());
+      } 
+      out.write(System.getProperty("line.separator").getBytes());
+    } 
+    out.flush();
+    out.close();
+  }
+
+
+
+
+
+
+
+
+
+
+  // process pdf file to text file
+  public static void printToTextPDF(String text, File outputFolder, String header) throws IOException {
+    String path = outputFolder.getAbsolutePath();
+    ArrayList<String> words = convertToArray(text);
+    String session = findSessionPDF(header);
+    String meeting = findMeetingPDF(header);
+    String date = findDatePDF(words);
+    String pathEnd = "_" + meeting + "_" + session + "_" + date + ".txt";
+    String president = findPresidentPDF(words);
+    
+    BufferedOutputStream out = new BufferedOutputStream(
+        new FileOutputStream(
+          String.valueOf(path) + File.separator + president + pathEnd, true), 
+        165537);
+    for (int i = 0; i < words.size(); i++) {
+      if (((String)words.get(i)).length() > 0 && ((String)words.get(i)).charAt(0) == '(') {
+        String parenthesis = (String)words.get(i);
+        int j = i + 1;
+        while (parenthesis.indexOf(')') == -1 && j < words.size()) {
+          parenthesis = String.valueOf(parenthesis) + " " + (String)words.get(j);
+          j++;
+        } 
+        if (parenthesis.indexOf(':') != -1 || (
+          words.size() > j && ((String)words.get(j)).length() > 0 && (
+          (String)words.get(j)).charAt(0) == '(')) {
+          byte b; int k; String[] arrayOfString; for (k = arrayOfString = MEMBERS.length, b = 0; b < k; ) { String member = arrayOfString[b];
+            if (parenthesis.indexOf("(" + member + ")") != -1) {
+              String country = member;
+              out.flush();
+              out = new BufferedOutputStream(
+                  new FileOutputStream(String.valueOf(path) + File.separator + 
+                    country + pathEnd, true), 
+                  165537); break;
+            } 
+            b++; }
+        
+        } 
+      } else if (((String)words.get(i)).equals("The") && (((String)words.get(i + 1))
+        .equals("President:") || ((
+        (String)words.get(i + 1)).equals("President") && (
+        (String)words.get(i + 2)).length() > 0 && (
+        (String)words.get(i + 2)).charAt(0) == '('))) {
+        out.flush();
+        out = new BufferedOutputStream(new FileOutputStream(
+              String.valueOf(path) + File.separator + president + pathEnd, true), 
+            165537);
+      } else if (((String)words.get(i)).equals("The") && (
+        (String)words.get(i + 1)).equals("Acting") && ((
+        (String)words.get(i + 2)).equals("President:") || ((
+        (String)words.get(i + 2)).equals("President") && (
+        (String)words.get(i + 3)).charAt(0) == '('))) {
+        out.flush();
+        out = new BufferedOutputStream(new FileOutputStream(
+              String.valueOf(path) + File.separator + "Acting President" + pathEnd, 
+              true), 165537);
+      } else if (((String)words.get(i)).equals("The") && (((String)words.get(i + 1))
+        .equals("Secretary-General:") || ((
+        (String)words.get(i + 1)).equals("Secretary-General") && (
+        (String)words.get(i + 2)).length() > 0 && (
+        (String)words.get(i + 2)).charAt(0) == '('))) {
+        out.flush();
+        out = new BufferedOutputStream(
+            new FileOutputStream(String.valueOf(path) + File.separator + 
+              "Secretary-General" + pathEnd, true), 
+            165537);
+      } 
+      out.write(((String)words.get(i)).getBytes());
+      out.write(" ".getBytes());
+    } 
+    out.flush();
+    out.close();
+  }
+
+  // locates the session number in a pdf
+  public static String findSessionPDF(String word) { return word.substring(word.indexOf("A") + 1, word.indexOf("p"))
+      .replaceAll("_", ""); }
+
+
+  // finds the meeting number in a pdf
+  public static String findMeetingPDF(String word) { return word.substring(word.lastIndexOf("_") + 1); }
+
+
+
+
+
+
+
+  public static ArrayList<String> convertToArray(String text) {
+    ArrayList<String> words = new ArrayList<String>();
+    String word = "";
+    for (int i = 0; i < text.length(); i++) {
+      if (text.substring(i, i + 1).equals(" ")) {
+        words.add(word);
+        word = "";
+      } else {
+        word = String.valueOf(word) + text.substring(i, i + 1);
+      } 
+    } 
+    return words;
+  }
+
+
+
+
+
+
+  // finds the meeting date in an xml
+  public static String findDateXML(XMLTree xml) {
+    Queue1L<XMLTree> queue = new Queue1L<XMLTree>();
+    String date = "";
+    XMLTree current = xml;
+    while (date.equals("")) {
+      if (current.isTag() && current.label().equals("date")) {
+        date = current.child(0).label(); continue;
+      } 
+      if (current.isTag()) {
+        for (int i = 0; i < current.numberOfChildren(); i++) {
+          queue.enqueue(current.child(i));
+        }
+        current = (XMLTree)queue.dequeue();
+      } 
+    } 
+    
+    return date;
+  }
+
+
+
+
+
+  // finds the meeting date in a pdf
+  public static String findDatePDF(ArrayList<String> words) {
+    for (int i = 0; i < words.size(); i++) {
+      if (((String)words.get(i + 1)).length() > 3) {
+        if (((String)words.get(i)).equals("January")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "01" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("February")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "02" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("March")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "03" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("April")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "04" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("May")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "05" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("June")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "06" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("July")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "07" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("August")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "08" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("September")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "09" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("October")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "10" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("November")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "11" + 
+            (String)words.get(i - 1);
+        }
+        if (((String)words.get(i)).equals("December")) {
+          return String.valueOf(((String)words.get(i + 1)).substring(0, 4)) + "12" + 
+            (String)words.get(i - 1);
+        }
+      } 
+    } 
+    return "no date";
+  }
+  // finds the name of the speaking president
+  public static String findPresidentPDF(ArrayList<String> words) {
+    for (int i = 0; i < words.size(); i++) {
+      if (((String)words.get(i)).indexOf("(") != -1 && ((String)words.get(i)).length() > 3 && 
+        !((String)words.get(i)).contains(".org")) {
+        String word = ((String)words.get(i))
+          .substring(1 + ((String)words.get(i)).indexOf("("));
+        while (word.indexOf(")") == -1) {
+          i++;
+          word = String.valueOf(word) + " " + (String)words.get(i);
+        } 
+        while (word.indexOf(")") != -1) {
+          word = word.substring(0, word.length() - 1);
+        }
+        if (word.indexOf("\\") == -1 && word.indexOf("/") == -1 && 
+          word.charAt(0) != 'c') {
+          return word;
+        }
+      } 
+    } 
+    return "president";
+  }
+
+
+
+
+
+
+  // finds the session number in an xml
+  public static String findSessionXML(XMLTree xml) {
+    Queue1L<XMLTree> queue = new Queue1L<XMLTree>();
+    String session = "";
+    XMLTree current = xml;
+    while (session.equals("")) {
+      if (current.isTag() && current.label().equals("idno") && 
+        current.attributeValue("type").equals("symbol")) {
+        session = current.child(0).label();
+        int[] slashes = new int[2];
+        int slash = 0;
+        for (int i = 0; i < session.length(); i++) {
+          if (session.charAt(i) == '/') {
+            slashes[slash] = i;
+            slash++;
+          } 
+        } 
+        session = session.substring(slashes[0] + 1, slashes[1]); continue;
+      } 
+      for (int i = 0; i < current.numberOfChildren(); i++) {
+        queue.enqueue(current.child(i));
+      }
+      current = (XMLTree)queue.dequeue();
+    } 
+    
+    return session;
+  }
+
+
+
+
+
+
+  // finds the meeting number in an xml
+  public static String findMeetingXML(XMLTree xml) {
+    Queue1L<XMLTree> queue = new Queue1L<XMLTree>();
+    String meeting = "";
+    XMLTree current = xml;
+    while (meeting.equals("")) {
+      if (current.isTag() && current.label().equals("idno") && 
+        current.attributeValue("type").equals("symbol")) {
+        meeting = current.child(0).label();
+        int dot = 0;
+        for (int i = 0; i < meeting.length(); i++) {
+          if (meeting.charAt(i) == '.') {
+            dot = i;
+          }
+        } 
+        meeting = meeting.substring(dot + 1); continue;
+      } 
+      for (int i = 0; i < current.numberOfChildren(); i++) {
+        queue.enqueue(current.child(i));
+      }
+      current = (XMLTree)queue.dequeue();
+    } 
+    
+    return meeting;
+  }
+
+
+
+
+
+
+  // finds the body (the spoken text) in the xml
+  public static XMLTree findBodyXML(XMLTree xml) {
+    Queue1L<XMLTree> queue = new Queue1L<XMLTree>();
+    XMLTree current = xml;
+    while (true) {
+      if (current.isTag() && current.label().equals("body")) {
+        return current;
+      }
+      for (int i = 0; i < current.numberOfChildren(); i++) {
+        queue.enqueue(current.child(i));
+      }
+      current = (XMLTree)queue.dequeue();
+    } 
+  }
+
+
+
+
+
+
+
+
+  // finds the president's state of origin in an xml
+  public static String findPresidentXML(XMLTree xml) {
+    for (int i = 0; i < xml.numberOfChildren(); i++) {
+      for (int j = 0; j < xml.child(i).numberOfChildren(); j++) {
+        byte b; int k; String[] arrayOfString; for (k = arrayOfString = MEMBERS.length, b = 0; b < k; ) { String member = arrayOfString[b];
+          if (xml.child(i).child(j).child(0).label()
+            .indexOf("(" + member + ")") != -1)
+            return member; 
+          b++; }
+      
+      } 
+    } 
+    return "president";
+  }
+
+
+
+  // determines which country is speaking in this line
+  public static String findCountryAddress(String oneLine) {
+    byte b;
+    int i;
+    String[] arrayOfString;
+    for (i = arrayOfString = MEMBERS.length, b = 0; b < i; ) { String member = arrayOfString[b];
+      if (oneLine.indexOf(member) != -1)
+        return member; 
+      b++; }
+    
+    return "unknown";
+  }
+
+
+
+
+
+
+  // determines which country is speaking in this line
+  public static String findCountryParenthesis(String oneLine) {
+    if (oneLine.indexOf('(') != -1) {
+      byte b; int i; String[] arrayOfString; for (i = arrayOfString = MEMBERS.length, b = 0; b < i; ) { String member = arrayOfString[b];
+        if (oneLine.indexOf("(" + member + ")") != -1)
+          return member; 
+        b++; }
+    
+    } 
+    return "";
+  }
+
+
+
+
+
+
+
+
+  
+  public static void main(String[] args) throws IOException {
+    JFileChooser fc = new JFileChooser();
+    fc.setFileSelectionMode(1);
+    fc.setAcceptAllFileFilterUsed(false);
+    fc.setDialogTitle("Select Input Folder");
+    int returnVal = fc.showOpenDialog(null);
+    File input = fc.getSelectedFile();
+    if (returnVal == 0) {
+      fc.setDialogTitle("Select Output Folder");
+      returnVal = fc.showOpenDialog(null);
+      File output = fc.getSelectedFile();
+      if (returnVal == 0)
+        listFilesForFolder(input, output); 
+    } 
+  }
+}
